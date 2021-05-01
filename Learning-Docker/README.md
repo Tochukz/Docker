@@ -1,7 +1,7 @@
 # Learning Docker (2015)
 __By Pethuru Raj, et. al.__   
 
-[Sample Code, 2nd Edition](https://github.com/PacktPublishing/Learning-Docker-Second-Edition)    
+[Sample Code, for 2nd Edition](https://github.com/PacktPublishing/Learning-Docker-Second-Edition)    
 
 __Preface__  
 A container generally contains an application and all of the application's libraries, binaries, and other dependencies are stuffed together to be presented as a comprehensive, yet compact entity for the outsisde world.  
@@ -283,3 +283,17 @@ $ sudo docker logs 5d3b2de2c03b
 ```  
 
 ## Chapter 3: Building Images  
+__Docker's integrated image building system__  
+We can craft an image manually by committing the container as an image after modifying it.  A better alternative will be to automatically craft the image using `Dockerfle`.   
+After you have made a `Dockerfile`, you use the  `docker build` subcommand to build the image.  
+```
+$ sudo docker build -t image_name:tag_name path_to_docker_file
+```  
+Assuming the docker file is in the current directory you can use a period as as the path parameter
+```
+$ sudo docker build -t mybuntu .
+```  
+You can rename the repo and tag of an existing image by using the `docker tag` subcommand and the image id.  
+```
+$ sudo docker tag 295418dc502 mybuntu:10.01
+```

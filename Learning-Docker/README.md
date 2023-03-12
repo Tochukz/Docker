@@ -6,21 +6,21 @@ __By Pethuru Raj, et. al.__
 __Preface__  
 A container generally contains an application and all of the application's libraries, binaries, and other dependencies are stuffed together to be presented as a comprehensive, yet compact entity for the outsisde world.  
 
-It is recommended that every contianer hosts one application service.
+It is recommended that every container hosts one application service.
 
 ## Chapter 1: Getting Started with Docker  
-Docker is a containerizationn engine, which automates the packaging, shipping, and deployment of any software applications that are presented as lightweight, protable, and self-sufficent containers, that will run virtually anywhere.
-A Docket comainter is completelty sisolated from other containers as well as the host machine. It also has its own process space and network interface.  
+Docker is a containerization engine, which automates the packaging, shipping, and deployment of any software applications that are presented as lightweight, protable, and self-sufficent containers, that will run virtually anywhere.  
+A Docker container is completely isolated from other containers as well as the host machine. It also has its own process space and network interface.  
 
 __Virtualization versus Containerization__  
 
 | Virtual Machined(VMs)                    | Containers                                    |
 |------------------------------------------|-----------------------------------------------|
 | Represents hardware-level virtualization | Represents OS virtualization                  |
-| Heavy wieght                             | Leigth weight                                 |
+| Heavy weight                             | Light weight                                 |
 | Slow provisioning                        | Real-time provisioning and scalability        |
-| Resource hungry, Limited perforance      | Native/bare metal performance                 |
-| Fully isolated and hance more secured    | Process-level isolation and hence less secure |
+| Resource hungry, limited perforance      | Native/bare metal performance                 |
+| Fully isolated and hence more secured    | Process-level isolation and hence less secure |
 | SSH and TTY support                      | No SSH, TTY Support                           |
 
 
@@ -58,6 +58,12 @@ Or you can use _wget_
 $ sudo wget -qO- https://get.docker.io/ | sh  
 ```
 
+__Install Docker on MacOS, Windows or Linux__     
+Install Docker desktop from [docker for desktop](https://docs.docker.com/desktop/)  
+```bash
+# Check that docker is running
+$ docker ps
+```
 __Understanding the Docker setup__  
 To view details of your installed docker engine
 ```
@@ -69,7 +75,8 @@ $ sudo docker info
 ```  
 
 __Client server communication__  
-Docker is usuallly programmed for carring out server-client communication by using the Unix socket(`/var/run/docker.sock`). Docker also has an IANA registered port, which is 2375. However, for security reason, this port is not enabled by default.  
+Docker is usuallly programmed for carring out server-client communication by using the Unix socket(`/var/run/docker.sock`).   
+Docker also has an IANA registered port, which is 2375. However, for security reason, this port is not enabled by default.  
 
 __Downloading a Docker Image__  
 To download a docker image use the `docker pull` subcommand  

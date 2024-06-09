@@ -6,6 +6,10 @@
 [Docker Hub](https://docs.docker.com/docker-hub/)  
 [Multi Platform Images](https://docs.docker.com/build/building/multi-platform/)  
 [Docker Volumnes](https://docs.docker.com/storage/volumes/)  
+[Docker Networking](https://docs.docker.com/network/)  
+[Docker Compose](https://docs.docker.com/compose/)  
+[Compose File Reference](https://docs.docker.com/compose/compose-file/)  
+[Compose CLI Referenece](https://docs.docker.com/compose/reference/)   
 
 ### Docker architecture
 Docker uses a client-server architecture. The Docker client talks to the Docker daemon, which does the heavy lifting of _building_, _running_, and _distributing_ your Docker containers. The Docker client and daemon can run on the same system, or you can connect a Docker client to a remote Docker daemon.  
@@ -42,7 +46,7 @@ You can connect a container to one or more networks, attach storage to it, or ev
 ## Chapter 1: Getting Started
 __Building an image__  
 ```bash
-$ cd getting-started
+$ cd getting-started-app
 $ docker build -t getting-started .
 ```
 The docker build command uses the Dockerfile to build a new image. The image will be named _getting-started_ according to the tag specified.
@@ -63,7 +67,7 @@ $ docker ps
 __Update the application__   
 After you must have updated your code, you can rebuild the image
 ```bash
-$ cd getting-started
+$ cd getting-started-app
 $ docker build -t getting-started .
 ```  
 Remote the existing container
@@ -162,7 +166,7 @@ $ docker rm <container-id>
 ```
 2. Start a new container
 ```bash
-$ cd getting-started
+$ cd getting-started-app
 $ docker run -dp 127.0.0.1:3000:3000 \
     -w /app --mount type=bind,src="$(pwd)",target=/app \
     node:18-alpine \
@@ -178,10 +182,130 @@ $ docker logs -f <container-id>
 ```
 
 __Multi Container app__  
+In general, each container should do one thing and do it well.
+
+__Container networking__  
+ Containers, by default, run in isolation and don't know anything about other processes or containers on the same machine.  
+To make two containers talk to each other, you place the two containers on the same network.  
+There are two ways to put a container on a network:
+1. Assign the network when starting the container.
+2. Connect an already running container to a network.
+
+Lets create a network first and then attach an MySQL container to the network
+1. Create the network
+```bash
+$ docker network create todo-app
+```  
+2. Start a MySQL container and attach it to the network.
+A few environment variables will be use to initialize the database will also be defined.
+```bash
+$ docker run -d \
+    --network todo-app --network-alias mysql \
+    -v todo-mysql-data:/var/lib/mysql \
+    -e MYSQL_ROOT_PASSWORD=secret \
+    -e MYSQL_DATABASE=todos \
+    mysql:8.0
+```
+  *  a volume named _todo-mysql-data_ is mounted at `/var/lib/mysql` which is where MySQL stores its data.
+  * you never ran a `docker volume create` command so Docker creates the named volume automatically for you.
+
+3. Connect to the database to verify that it is running.
+```bash
+# First, get the container id
+$ docker ps
+$ docker exec -it <mysql-container-id> mysql -u root -p
+```
+Enter the password (secret) that was used when starting the container.
+Run a simple MySQL command show show all the database
+```sql
+> SHOW DATABASES;
+# exit the shell
+> exit;
+```
+
+__Connect to MySQL__  
+We can use of the `nicolaka/netshoot` container, which ships with a lot of tools that are useful for  troubleshooting or debugging networking issues.
+```bash
+$ docker run -it --network todo-app nicolaka/netshoot
+```
+Use the `dig` command, inside the container to look up the IP address for the hostname `mysql`.
+```bash  
+$ dig mysql
+```
+The dig command will produce an answer section that looks like this
+```
+;; ANSWER SECTION:
+mysql.			600	IN	A	172.21.0.2
+```
+This means the the `A` record for `mysql` resolves to 172.23.0.2 even though `mysql` is not a valid hostname.
+Remember that this _mysql_ is the `network-alias` that we used when we started the MySQL container and attached it to a network.   
+This implies that we can simply use the hostname `mysql` to connect to the MySQL container.  
+
+__Run you app with MySQL__  
+This starts the container and connect it to the Docker network created earlier.
+```bash
+$ cd getting-started-app
+$ docker run -dp 127.0.0.1:3000:3000 \
+  -w /app -v "$(pwd):/app" \
+  --network todo-app \
+  -e MYSQL_HOST=mysql \
+  -e MYSQL_USER=root \
+  -e MYSQL_PASSWORD=secret \
+  -e MYSQL_DB=todos \
+  node:18-alpine \
+  sh -c "yarn install && yarn run dev"
+```
+Note that we used the `mysql` network alias as the MYSQL_HOST environment variable value.  
+To check the logs coming out of the container
+```bash
+$ docker logs -f <container-id>
+```
+Launch the application http://localhost:3000 using your browser, add a couple of to do Items.
+Check the database to confirm the items created.
+```bash
+# First, get the MySQL container id
+$ docker ps
+$ docker exec -it <mysql-container-id> mysql -u root -p
+```
+You will be prompted to enter the password, type the password we used in launching the container - secret.  
+The MySQL shell will be launched.  
+Run some MySQL commands.
+```sql
+mysql> show databases;
+mysql> use todos;
+mysql> show tables;
+mysql> select * from todo_items;
+```
+
+When working with multiple container, you have to create a network, start containers, specify all of the environment variables, expose ports, and more.
+With _Docker Compose_, you can share your application stacks in a much easier way and let others spin them up with a single, simple command.
+
+__Use Docker Compose__  
+A `compose.yaml` file must is used to describe the services (containers), networks and columns. The name of each service is automatically made and alias to the services network address.  
+To start up the application stack using
+```bash
+$ docker compose up -d
+```
+Docker Compose will create the volume as well as a network specifically for the application stack which is why you didn't define one in the Compose file.  
+To check the logs
+```bash
+$  docker compose logs -f
+```
+The logs from each of the services are interleaved into a single stream.
+
+To tear down the application stack
+```bash
+$ docker compose down
+```
+The containers will be stop and the network will be removed.  
+By default, named volumes in your compose file are not removed when you run `docker compose down`. If you want to remove the volumes, you need to add the `--volumes` flag.
+
+__Image-building best practices__  
+You can see the command that was used to create each layer within an image.
+```bash
+$ docker image history <image-name>
+```
 
 
-## Docker Compose
-[Getting Started](https://docs.docker.com/compose/gettingstarted/)
-
-
-Use 'docker scan' to run Snyk tests against images to find vulnerabilities and learn how to fix them    
+__More Info__    
+Use 'docker scan' to run Snyk tests against images to find vulnerabilities and learn how to fix them  

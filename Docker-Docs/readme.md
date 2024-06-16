@@ -10,10 +10,11 @@
 [Docker Compose](https://docs.docker.com/compose/)  
 [Compose File Reference](https://docs.docker.com/compose/compose-file/)  
 [Compose CLI Referenece](https://docs.docker.com/compose/reference/)   
+[Language Specific Guide](https://docs.docker.com/language/)  
 
 ### Docker architecture
-Docker uses a client-server architecture. The Docker client talks to the Docker daemon, which does the heavy lifting of _building_, _running_, and _distributing_ your Docker containers. The Docker client and daemon can run on the same system, or you can connect a Docker client to a remote Docker daemon.  
-The Docker client and daemon communicate using a _REST API_, over _UNIX sockets_ or a _network interface_.  
+Docker uses a client-server architecture. The Docker client talks to the Docker daemon, which does the heavy lifting of _building_, _running_, and _distributing_ your Docker containers. The Docker client and daemon can run on the same system, or you can connect a Docker client to a remote Docker daemon.    
+The Docker client and daemon communicate using a _REST API_, over _UNIX sockets_ or a _network interface_.    
 Another Docker client is _Docker Compose_, that lets you work with applications consisting of a set of containers.
 
 __The Docker daemon__  
@@ -70,7 +71,7 @@ After you must have updated your code, you can rebuild the image
 $ cd getting-started-app
 $ docker build -t getting-started .
 ```  
-Remote the existing container
+Remove the existing container
 ```bash
 # Get the container id
 $ docker ps
@@ -85,7 +86,7 @@ $ docker run -dp 127.0.0.1:3000:3000 getting-started
 __Sharing the application__  
 Now that you've built an image, you can share it. To share Docker images, you have to use a Docker registry. The default registry is [Docker Hub](https://hub.docker.com/).     
 
-First you need to create a repository
+First, you need to create a repository
 1. Login to [Docker Hub](https://hub.docker.com)
 2. Click on _Create a Repository_
 3. Enter a name for the repositotry - _getting-started_
@@ -97,7 +98,8 @@ Now you can push your docker image to the repository
 ```bash
 $ docker login
 # When prompted for your username, supply your docker id
-# If you were already logged in to a different account, use the docker logout command
+# If you were already logged in to a different account, use the logout command
+$ docker logout
 ```
 2. Use the docker tag command to give the getting-started image a new name.
 ```bash
@@ -139,7 +141,7 @@ There are two types of volumes
 
 In addition to _volume mounts_ and _bind mounts_, Docker also supports other mount types and storage drivers for handling more complex and specialized use cases.
 
-__Verify that the data persists__
+__Verify that the data persists__  
 To verify the that the data persist.
 1. Launch the app and create some todo items.
 2. Stop the container and remove it.
@@ -152,6 +154,7 @@ To find out where is Docker stores the data for the mounted volume
 $ docker volume inspect todo-db
 # Check the path specified by the Mountpoint property
 ```
+In my case, the _Mountpoint_ was set to `/var/lib/docker/volumes/todo-db/_data` on the host machine.
 
 __Bind Mount__  
 When working on an application, you can use a bind mount to mount source code into the container. The container sees the changes you make to the code immediately, as soon as you save a file.
@@ -197,7 +200,7 @@ Lets create a network first and then attach an MySQL container to the network
 $ docker network create todo-app
 ```  
 2. Start a MySQL container and attach it to the network.
-A few environment variables will be use to initialize the database will also be defined.
+A few environment variables used to initialize the database will also be defined.
 ```bash
 $ docker run -d \
     --network todo-app --network-alias mysql \
@@ -207,7 +210,7 @@ $ docker run -d \
     mysql:8.0
 ```
   *  a volume named _todo-mysql-data_ is mounted at `/var/lib/mysql` which is where MySQL stores its data.
-  * you never ran a `docker volume create` command so Docker creates the named volume automatically for you.
+  * you never ran a `docker volume create` command so Docker  will create the named volume automatically for you.
 
 3. Connect to the database to verify that it is running.
 ```bash
@@ -215,8 +218,8 @@ $ docker run -d \
 $ docker ps
 $ docker exec -it <mysql-container-id> mysql -u root -p
 ```
-Enter the password (secret) that was used when starting the container.
-Run a simple MySQL command show show all the database
+Enter the password (secret) that was used when starting the container.  
+Run a simple MySQL command to show all the database
 ```sql
 > SHOW DATABASES;
 # exit the shell
@@ -281,8 +284,8 @@ When working with multiple container, you have to create a network, start contai
 With _Docker Compose_, you can share your application stacks in a much easier way and let others spin them up with a single, simple command.
 
 __Use Docker Compose__  
-A `compose.yaml` file must is used to describe the services (containers), networks and columns. The name of each service is automatically made and alias to the services network address.  
-To start up the application stack using
+A `compose.yaml` file must is used to describe the services (containers), networks and columns. The name of each service is automatically made an alias to the services network address.  
+To start up the application stack using compose
 ```bash
 $ docker compose up -d
 ```
@@ -299,13 +302,37 @@ $ docker compose down
 ```
 The containers will be stop and the network will be removed.  
 By default, named volumes in your compose file are not removed when you run `docker compose down`. If you want to remove the volumes, you need to add the `--volumes` flag.
-
-__Image-building best practices__  
-You can see the command that was used to create each layer within an image.
+```bash
+$ docker compose down --volumes
+```
+#### Image-building best practices  
+__Image Layering__  
+Using the `image history` command, you can see the command that was used to create each layer within an image
 ```bash
 $ docker image history <image-name>
 ```
+Each of the lines in the output represents a layer in the image withe the base at the bottom and the newest layer at the top.   
+Using this, you can also quickly see the size of each layer, helping diagnose large images.  
 
+__Layer caching__  
+ Once a layer changes, all downstream layers have to be recreated as well. You can use this knowledge to decrease build times for your container images. This is done by putting step that are likely not to produce a change before step that are likely to. For example, you may want to do the "dependency installation" step before "source code copy" step as shown below:
+ ```
+...
+COPY package.json yarn.lock ./
+RUN yarn install --production
+COPY . .
+...
+ ```
+ Now the dependency will be cached and not need to be shipped around each time we do a build.  Subsequently, pushing and pulling the image and updates to it will be much faster.
 
-__More Info__    
-Use 'docker scan' to run Snyk tests against images to find vulnerabilities and learn how to fix them  
+__Multi-stage builds__  
+There are several advantages for using multi-stage build:
+1. Separate build-time dependencies from runtime dependencies
+2. Reduce overall image size by shipping only what your app needs to run
+
+__Multi-stage builds: React example__
+When building React applications, you need a Node environment to compile the JSX code int HTML, JS, and CSS. If you are not doing server-side rendering, you don't need a Node environment for your production build. You can ship the static resources in a static _nginx_ container.
+See the _Dockerfile_ in `chp1/react-app`.  
+
+__Docker Scan__    
+Use `docker scan` to run _Snyk_ tests against images to find vulnerabilities and learn how to fix them  

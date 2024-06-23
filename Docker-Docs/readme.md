@@ -334,5 +334,31 @@ __Multi-stage builds: React example__
 When building React applications, you need a Node environment to compile the JSX code int HTML, JS, and CSS. If you are not doing server-side rendering, you don't need a Node environment for your production build. You can ship the static resources in a static _nginx_ container.
 See the _Dockerfile_ in `chp1/react-app`.  
 
+__Environment Variables in Container__  
+If you have a `.env` file in you application and you have configured `dotenv` application for a Node.js application.
+When you run you container, the variables defined in the `.env` file will be accessible in the container application.  
+There are other ways ways to pass environment variables to a container
+1. Using the `-e` flag
+```bash
+$ docker run -dp 8080:8071 -e PORT='8071' -e NODE_ENV='development' simple-express-app
+```
+This should override the `.env` file variables.
+2. Using variables from the current terminal
+```bash
+# Set the variables first
+export PORT=8072
+export NODE_ENV=staging
+# Use the variables the run the container
+$ docker run -dp 8080:8072 -e PORT -e NODE_ENV simple-express-app
+```
+3. Using a env file
+First you need to defined your variables in a file using the `VAR=VALUE` format. Each pair of key/value pair must be on one line.
+```bash
+$ docker run -dp 8080:8073 --env-file docker.env simple-express-app
+```
+Note that the name of the file can be anything. I use `docker.env` in this case.
+
+All 3 methods seems to override environment variables that may have been defined in a `.env` file in the application source code.
+
 __Docker Scan__    
 Use `docker scan` to run _Snyk_ tests against images to find vulnerabilities and learn how to fix them  
